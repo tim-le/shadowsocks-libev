@@ -518,8 +518,6 @@ connect_to_remote(struct addrinfo *res,
 #endif
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    remote_t *remote = new_remote(sockfd);
-
     // setup remote socks
 
     if (setnonblocking(sockfd) == -1)
@@ -538,6 +536,8 @@ connect_to_remote(struct addrinfo *res,
             ERROR("setinterface");
     }
 #endif
+  
+    remote_t *remote = new_remote(sockfd);
 
 #ifdef TCP_FASTOPEN
     if (fast_open) {
@@ -590,7 +590,9 @@ connect_to_remote(struct addrinfo *res,
 
         if (r == -1 && errno != CONNECT_IN_PROGRESS) {
             ERROR("connect");
-            close(sockfd);
+            //close(sockfd);
+            close_and_free_remote(EV_A_ remote);
+            //TODO: memory leak? :: remote = new_remote(sockfd); 
             return NULL;
         }
     }
