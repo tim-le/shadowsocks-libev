@@ -508,7 +508,6 @@ connect_to_remote(struct addrinfo *res,
     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (sockfd == -1) {
         ERROR("socket");
-        close(sockfd);
         return NULL;
     }
 
