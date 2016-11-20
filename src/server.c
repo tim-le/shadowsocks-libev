@@ -529,10 +529,8 @@ connect_to_remote(struct addrinfo *res,
     if (bind_address != NULL)
         if (bind_to_address(sockfd, bind_address) == -1) {
             ERROR("bind_to_address");
-            if (ipv6first) {
-                close(sockfd);
-                return NULL;
-            }
+            close(sockfd);
+            return NULL;
         }
 
 #ifdef SET_INTERFACE
