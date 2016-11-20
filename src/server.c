@@ -590,8 +590,7 @@ connect_to_remote(struct addrinfo *res,
 
         if (r == -1 && errno != CONNECT_IN_PROGRESS) {
             ERROR("connect");
-            //close(sockfd);
-            close_and_free_remote(EV_A_ remote);
+            close(sockfd);
             //TODO: memory leak? :: remote = new_remote(sockfd); 
             return NULL;
         }
