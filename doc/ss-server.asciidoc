@@ -13,7 +13,8 @@ SYNOPSIS
  [-k <password>] [-m <encrypt_method>] [-f <pid_file>]
  [-t <timeout>] [-c <config_file>] [-i <interface>]
  [-a <user_name>] [-d <addr>] [-n <nofile>]
- [--fast-open] [--acl <acl_config>]
+ [-b <local_address] [--fast-open] [--mptcp]
+ [--firewall] [--acl <acl_config>] [--mtu <MTU>]
  [--manager-address <path_to_unix_domain>]
 
 DESCRIPTION
@@ -41,13 +42,14 @@ Set the password. The server and the client should use the same password.
 -m <encrypt_method>::
 Set the cipher.
 +
-*Shadowsocks-libev* accepts 18 different ciphers:
+*Shadowsocks-libev* accepts 21 different ciphers:
 +
-table, rc4, rc4-md5, aes-128-cfb, aes-192-cfb, aes-256-cfb, bf-cfb,
+table, rc4, rc4-md5, aes-128-cfb, aes-192-cfb, aes-256-cfb,
+aes-128-ctr, aes-192-ctr, aes-256-ctr, bf-cfb,
 camellia-128-cfb, camellia-192-cfb, camellia-256-cfb, cast5-cfb, des-cfb,
 idea-cfb, rc2-cfb, seed-cfb, salsa20, chacha20 and chacha20-ietf.
 +
-The default cipher is 'table'.
+The default cipher is 'rc4-md5'.
 +
 If built with PolarSSL or custom OpenSSL libraries, some of
 these ciphers may not work.
@@ -95,9 +97,6 @@ Enable onetime authentication.
 -6::
 Resovle hostname to IPv6 address first.
 
--w::
-Enable white list mode (when ACL enabled).
-
 -d <addr>::
 Setup name servers for internal DNS resolver (libudns).
 The default server is fetched from '/etc/resolv.conf'.
@@ -107,6 +106,14 @@ Enable TCP fast open.
 +
 Only available with Linux kernel > 3.7.0.
 
+--mptcp::
+Enable Multipath TCP.
++
+Only available with MPTCP enabled Linux kernel.
+
+--firewall::
+Setup firewall rules for auto blocking.
+
 --acl <acl_config>::
 Enable ACL (Access Control List) and specify config file.
 
@@ -114,6 +121,14 @@ Enable ACL (Access Control List) and specify config file.
 Specify UNIX domain socket address for the communication between ss-manager(1) and ss-server(1).
 +
 Only available in server and manager mode.
+
+--mtu <MTU>::
+Specify the MTU of your network interface.
+
+--mptcp::
+Enable Multipath TCP.
++
+Only available with MPTCP enabled Linux kernel.
 
 -v::
 Enable verbose mode.
@@ -141,7 +156,7 @@ In order to listen to both IPv4/IPv6 address, use the following grammar in
 your config json file:
 ....
 {
-"server":["[::0]","0.0.0.0"],
+"server":["::0","0.0.0.0"],
 ...
 }
 ....

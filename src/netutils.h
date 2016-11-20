@@ -23,13 +23,47 @@
 #ifndef _NETUTILS_H
 #define _NETUTILS_H
 
+#if defined(__linux__)
+#include <netdb.h>
+#elif !defined(__MINGW32__)
+#include <netinet/tcp.h>
+#endif
+
+// only enable TCP_FASTOPEN on linux
+#if defined(__linux__)
+#include <linux/tcp.h>
+/*  conditional define for TCP_FASTOPEN */
+#ifndef TCP_FASTOPEN
+#define TCP_FASTOPEN   23
+#endif
+/*  conditional define for MSG_FASTOPEN */
+#ifndef MSG_FASTOPEN
+#define MSG_FASTOPEN   0x20000000
+#endif
+#elif !defined(__APPLE__)
+#ifdef TCP_FASTOPEN
+#undef TCP_FASTOPEN
+#endif
+#endif
+
+/* Backward compatibility for MPTCP_ENABLED between kernel 3 & 4 */
+#ifndef MPTCP_ENABLED
+#ifdef TCP_CC_INFO
+#define MPTCP_ENABLED 42
+#else
+#define MPTCP_ENABLED 26
+#endif
+#endif
+
 /** byte size of ip4 address */
 #define INET_SIZE 4
 /** byte size of ip6 address */
 #define INET6_SIZE 16
 
 size_t get_sockaddr_len(struct sockaddr *addr);
-ssize_t get_sockaddr(char *host, char *port, struct sockaddr_storage *storage, int block);
+ssize_t get_sockaddr(char *host, char *port,
+                     struct sockaddr_storage *storage, int block,
+                     int ipv6first);
 int set_reuseport(int socket);
 
 #ifdef SET_INTERFACE
@@ -58,5 +92,7 @@ int sockaddr_cmp(struct sockaddr_storage *addr1,
  */
 int sockaddr_cmp_addr(struct sockaddr_storage *addr1,
                       struct sockaddr_storage *addr2, socklen_t len);
+
+int validate_hostname(const char *hostname, const int hostname_len);
 
 #endif

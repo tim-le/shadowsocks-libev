@@ -8,12 +8,12 @@ ss-tunnel - shadowsocks tools for local port forwarding, libev port
 SYNOPSIS
 --------
 *ss-tunnel*
- [-AuUv] [-h|--help]
+ [-AuUv6] [-h|--help]
  [-s <server_host>] [-p <server_port>] [-l <local_port>]
  [-k <password>] [-m <encrypt_method>] [-f <pid_file>]
  [-t <timeout>] [-c <config_file>] [-i <interface>]
  [-b <local_addr>] [-a <user_name>] [-n <nofile>]
- [-L addr:port]
+ [-L addr:port] [--mtu <MTU>]
 
 DESCRIPTION
 -----------
@@ -44,13 +44,14 @@ Set the password. The server and the client should use the same password.
 -m <encrypt_method>::
 Set the cipher.
 +
-*Shadowsocks-libev* accepts 18 different ciphers:
+*Shadowsocks-libev* accepts 21 different ciphers:
 +
-table, rc4, rc4-md5, aes-128-cfb, aes-192-cfb, aes-256-cfb, bf-cfb,
+table, rc4, rc4-md5, aes-128-cfb, aes-192-cfb, aes-256-cfb,
+aes-128-ctr, aes-192-ctr, aes-256-ctr, bf-cfb,
 camellia-128-cfb, camellia-192-cfb, camellia-256-cfb, cast5-cfb, des-cfb,
 idea-cfb, rc2-cfb, seed-cfb, salsa20, chacha20 and chacha20-ietf.
 +
-The default cipher is 'table'.
+The default cipher is 'rc4-md5'.
 +
 If built with PolarSSL or custom OpenSSL libraries, some of
 these ciphers may not work.
@@ -95,10 +96,21 @@ Enable UDP relay and disable TCP relay.
 -A::
 Enable onetime authentication.
 
+-6::
+Resovle hostname to IPv6 address first.
+
 -L <addr:port>::
 Specify destination server address and port for local port forwarding.
 +
 Only used and available in tunnel mode.
+
+--mtu <MTU>::
+Specify the MTU of your network interface.
+
+--mptcp::
+Enable Multipath TCP.
++
+Only available with MPTCP enabled Linux kernel.
 
 -v::
 Enable verbose mode.
