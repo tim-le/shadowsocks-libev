@@ -1,7 +1,7 @@
 /*
  * netutils.c - Network utilities
  *
- * Copyright (C) 2013 - 2016, Max Lv <max.c.lv@gmail.com>
+ * Copyright (C) 2013 - 2017, Max Lv <max.c.lv@gmail.com>
  *
  * This file is part of the shadowsocks-libev.
  *
@@ -29,15 +29,10 @@
 #include "config.h"
 #endif
 
-#ifdef __MINGW32__
-#include "win32.h"
-#define sleep(n) Sleep(1000 * (n))
-#else
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#endif
 
 #if defined(HAVE_SYS_IOCTL_H) && defined(HAVE_NET_IF_H) && defined(__linux__)
 #include <net/if.h>
@@ -84,7 +79,7 @@ int
 setinterface(int socket_fd, const char *interface_name)
 {
     struct ifreq interface;
-    memset(&interface, 0, sizeof(interface));
+    memset(&interface, 0, sizeof(struct ifreq));
     strncpy(interface.ifr_name, interface_name, IFNAMSIZ);
     int res = setsockopt(socket_fd, SOL_SOCKET, SO_BINDTODEVICE, &interface,
                          sizeof(struct ifreq));
@@ -99,7 +94,7 @@ bind_to_address(int socket_fd, const char *host)
     if (host != NULL) {
         struct cork_ip ip;
         struct sockaddr_storage storage;
-        memset(&storage, 0, sizeof(storage));
+        memset(&storage, 0, sizeof(struct sockaddr_storage));
         if (cork_ip_init(&ip, host) != -1) {
             if (ip.version == 4) {
                 struct sockaddr_in *addr = (struct sockaddr_in *)&storage;

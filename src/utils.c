@@ -1,7 +1,7 @@
 /*
  * utils.c - Misc utilities
  *
- * Copyright (C) 2013 - 2016, Max Lv <max.c.lv@gmail.com>
+ * Copyright (C) 2013 - 2017, Max Lv <max.c.lv@gmail.com>
  *
  * This file is part of the shadowsocks-libev.
  *
@@ -29,12 +29,13 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
-#ifndef __MINGW32__
 #include <pwd.h>
-#endif
+#include <grp.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#include <sodium.h>
 
 #include "utils.h"
 
@@ -53,15 +54,12 @@ FILE *logfile;
 int use_syslog = 0;
 #endif
 
-#ifndef __MINGW32__
 void
 ERROR(const char *s)
 {
     char *msg = strerror(errno);
     LOGE("%s: %s", s, msg);
 }
-
-#endif
 
 int use_tty = 1;
 
@@ -91,7 +89,7 @@ int
 ss_isnumeric(const char *s) {
     if (!s || !*s)
         return 0;
-    while (isdigit(*s))
+    while (isdigit((unsigned char)*s))
         ++s;
     return *s == '\0';
 }
@@ -102,7 +100,6 @@ ss_isnumeric(const char *s) {
 int
 run_as(const char *user)
 {
-#ifndef __MINGW32__
     if (user[0]) {
         /* Convert user to a long integer if it is a non-negative number.
          * -1 means it is a user name. */
@@ -117,6 +114,7 @@ run_as(const char *user)
 
 #ifdef HAVE_GETPWNAM_R
         struct passwd pwdbuf, *pwd;
+        memset(&pwdbuf, 0, sizeof(struct passwd));
         size_t buflen;
         int err;
 
@@ -134,21 +132,28 @@ run_as(const char *user)
                 if (setgid(pwd->pw_gid) != 0) {
                     LOGE(
                         "Could not change group id to that of run_as user '%s': %s",
-                        user, strerror(errno));
+                        pwd->pw_name, strerror(errno));
                     return 0;
                 }
+
+#ifndef __CYGWIN__
+                if (initgroups(pwd->pw_name, pwd->pw_gid) == -1) {
+                    LOGE("Could not change supplementary groups for user '%s'.", pwd->pw_name);
+                    return 0;
+                }
+#endif
 
                 if (setuid(pwd->pw_uid) != 0) {
                     LOGE(
                         "Could not change user id to that of run_as user '%s': %s",
-                        user, strerror(errno));
+                        pwd->pw_name, strerror(errno));
                     return 0;
                 }
                 break;
             } else if (err != ERANGE) {
                 if (err) {
-                    LOGE("run_as user '%s' could not be found: %s", user, strerror(
-                             err));
+                    LOGE("run_as user '%s' could not be found: %s", user,
+                            strerror(err));
                 } else {
                     LOGE("run_as user '%s' could not be found.", user);
                 }
@@ -174,18 +179,21 @@ run_as(const char *user)
         /* setgid first, because we may not allowed to do it anymore after setuid */
         if (setgid(pwd->pw_gid) != 0) {
             LOGE("Could not change group id to that of run_as user '%s': %s",
-                 user, strerror(errno));
+                 pwd->pw_name, strerror(errno));
+            return 0;
+        }
+        if (initgroups(pwd->pw_name, pwd->pw_gid) == -1) {
+            LOGE("Could not change supplementary groups for user '%s'.", pwd->pw_name);
             return 0;
         }
         if (setuid(pwd->pw_uid) != 0) {
             LOGE("Could not change user id to that of run_as user '%s': %s",
-                 user, strerror(errno));
+                 pwd->pw_name, strerror(errno));
             return 0;
         }
 #endif
     }
 
-#endif // __MINGW32__
     return 1;
 }
 
@@ -222,6 +230,23 @@ ss_malloc(size_t size)
 }
 
 void *
+ss_align(size_t size)
+{
+    int err;
+    void *tmp = NULL;
+#ifdef HAVE_POSIX_MEMALIGN
+    err = posix_memalign(&tmp, sizeof(void *), size);
+#else
+    err = -1;
+#endif
+    if (err) {
+        return ss_malloc(size);
+    } else {
+        return tmp;
+    }
+}
+
+void *
 ss_realloc(void *ptr, size_t new_size)
 {
     void *new = realloc(ptr, new_size);
@@ -237,7 +262,7 @@ void
 usage()
 {
     printf("\n");
-    printf("shadowsocks-libev %s with %s\n\n", VERSION, USING_CRYPTO);
+    printf("shadowsocks-libev %s\n\n", VERSION);
     printf(
         "  maintained by Max Lv <max.c.lv@gmail.com> and Linus Yang <laokongzi@gmail.com>\n\n");
     printf("  usage:\n\n");
@@ -262,19 +287,21 @@ usage()
     printf(
         "       -k <password>              Password of your remote server.\n");
     printf(
-        "       -m <encrypt_method>        Encrypt method: table, rc4, rc4-md5,\n");
+        "       -m <encrypt_method>        Encrypt method: rc4-md5, \n");
+    printf(
+        "                                  aes-128-gcm, aes-192-gcm, aes-256-gcm,\n");
     printf(
         "                                  aes-128-cfb, aes-192-cfb, aes-256-cfb,\n");
     printf(
         "                                  aes-128-ctr, aes-192-ctr, aes-256-ctr,\n");
     printf(
-        "                                  bf-cfb, camellia-128-cfb, camellia-192-cfb,\n");
+        "                                  camellia-128-cfb, camellia-192-cfb,\n");
     printf(
-        "                                  camellia-256-cfb, cast5-cfb, des-cfb,\n");
+        "                                  camellia-256-cfb, bf-cfb,\n");
     printf(
-        "                                  idea-cfb, rc2-cfb, seed-cfb, salsa20,\n");
+        "                                  chacha20-ietf-poly1305,\n");
     printf(
-        "                                  chacha20 and chacha20-ietf.\n");
+        "                                  salsa20, chacha20 and chacha20-ietf.\n");
     printf(
         "                                  The default cipher is rc4-md5.\n");
     printf("\n");
@@ -305,8 +332,6 @@ usage()
 #endif
     printf(
         "       [-U]                       Enable UDP relay and disable TCP relay.\n");
-    printf(
-        "       [-A]                       Enable onetime authentication.\n");
 #ifdef MODULE_REMOTE
     printf(
         "       [-6]                       Resovle hostname to IPv6 address first.\n");
@@ -322,7 +347,9 @@ usage()
     printf(
         "       [-d <addr>]                Name servers for internal DNS resolver.\n");
 #endif
-#if defined(MODULE_REMOTE) || defined(MODULE_LOCAL)
+    printf(
+        "       [--reuse-port]             Enable port reuse.\n");
+#if defined(MODULE_REMOTE) || defined(MODULE_LOCAL) || defined(MODULE_REDIR)
     printf(
         "       [--fast-open]              Enable TCP fast open.\n");
     printf(
@@ -343,11 +370,15 @@ usage()
 #ifdef __linux__
     printf(
         "       [--mptcp]                  Enable Multipath TCP on MPTCP Kernel.\n");
-#ifdef MODULE_REMOTE
+#endif
+#ifndef MODULE_MANAGER
     printf(
-        "       [--firewall]               Setup firewall rules for auto blocking.\n");
+        "       [--key <key_in_base64>]    Key of your remote server.\n");
 #endif
-#endif
+    printf(
+        "       [--plugin <name>]          Enable SIP003 plugin. (Experimental)\n");
+    printf(
+        "       [--plugin-opts <options>]  Set SIP003 plugin options. (Experimental)\n");
     printf("\n");
     printf(
         "       [-v]                       Verbose mode.\n");
@@ -359,7 +390,6 @@ usage()
 void
 daemonize(const char *path)
 {
-#ifndef __MINGW32__
     /* Our process ID and Session ID */
     pid_t pid, sid;
 
@@ -404,7 +434,6 @@ daemonize(const char *path)
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
-#endif
 }
 
 #ifdef HAVE_SETRLIMIT

@@ -1,7 +1,7 @@
 /*
  * cache.h - Define the cache manager interface
  *
- * Copyright (C) 2013 - 2016, Max Lv <max.c.lv@gmail.com>
+ * Copyright (C) 2013 - 2017, Max Lv <max.c.lv@gmail.com>
  *
  * This file is part of the shadowsocks-libev.
  *
@@ -29,7 +29,12 @@
 #define _CACHE_
 
 #include "uthash.h"
-#include "ev.h"
+
+#ifdef HAVE_LIBEV_EV_H
+#include <libev/ev.h>
+#else
+#include <ev.h>
+#endif
 
 /**
  * A cache entry

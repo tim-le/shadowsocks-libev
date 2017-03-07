@@ -1,7 +1,7 @@
 /*
  * jconf.h - Define the config data structure
  *
- * Copyright (C) 2013 - 2016, Max Lv <max.c.lv@gmail.com>
+ * Copyright (C) 2013 - 2017, Max Lv <max.c.lv@gmail.com>
  *
  * This file is part of the shadowsocks-libev.
  * shadowsocks-libev is free software; you can redistribute it and/or modify
@@ -53,10 +53,14 @@ typedef struct {
     char *local_addr;
     char *local_port;
     char *password;
+    char *key;
     char *method;
     char *timeout;
-    int auth;
+    char *user;
+    char *plugin;
+    char *plugin_opts;
     int fast_open;
+    int reuse_port;
     int nofile;
     char *nameserver;
     char *tunnel_address;
